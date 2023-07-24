@@ -1,0 +1,50 @@
+- hosts: "{{host_play}}"
+  become: yes
+  vars_prompt:
+    - name: host_play
+      prompt: What is your host?
+      private: no
+    - name: Domain
+      prompt: What is your domain (example:blog.docker-test.store)?
+      private: no
+  tasks:
+   - name: Create directory
+     file:
+      path: /home/Blog_Test
+      mode: 0755
+      state: directory
+
+   - name: Clone a gitlub repository
+     git:
+       repo: https://gitlab.services-for-app.space/root/blog_test.git 
+       dest: /home/Blog_Test
+       clone: yes
+       update: yes
+
+   - name: Print Files
+     shell: ls -la /home/Blog_Test
+     register: results
+   - debug:
+       var: results.stdout
+   - name: edit_domain
+     lineinfile: dest=/home/Blog_Test/nginx/nginx.conf  regexp='\s+server_name' line='        server_name {{ Domain }};'
+   - name: check docker is active
+     service:
+       name: docker
+       state: started
+       enabled: yes    
+   - name: Build start
+     shell: 
+       cmd: "docker-compose -f docker-compose.yml up -d"
+       chdir: /home/Blog_Test
+     register: results2
+   - debug:
+       var: results2.stdout
+   - name: Build status
+     shell:
+       cmd: "docker compose ps"
+       chdir: /home/Blog_Test
+     register: results3
+   - debug:
+       var: results3.stdout
+
